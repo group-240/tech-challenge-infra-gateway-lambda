@@ -28,6 +28,17 @@ This project sets up an AWS API Gateway using Terraform to manage various RESTfu
 
 - **outputs.tf**: Outputs from the main Terraform configuration.
 
+## Available Endpoints
+
+- `GET /customers/cpf/{cpf}` - Get customer by CPF
+  - Parameters:
+    - cpf (path parameter): Customer's CPF number
+  - Returns: Customer information if found
+  - Status codes:
+    - 200: Success
+    - 400: Invalid/missing CPF
+    - 502: External API error
+
 - **provider.tf**: Configuration for the AWS provider.
 
 ## Setup Instructions
