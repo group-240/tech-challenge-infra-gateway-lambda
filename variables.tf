@@ -1,27 +1,17 @@
+variable "aws_region" {
+  description = "AWS Region - fixo em us-east-1"
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "project_name" {
+  description = "Nome do projeto"
+  type        = string
+  default     = "tech-challenge"
+}
+
 variable "api_name" {
-  description = "The name of the API Gateway"
+  description = "Nome do API Gateway"
   type        = string
-}
-
-variable "endpoint_type" {
-  description = "The endpoint type for the API Gateway"
-  type        = string
-  default     = "REGIONAL"
-}
-
-variable "stage_name" {
-  description = "The name of the deployment stage"
-  type        = string
-  default     = "prod"
-}
-
-variable "cors_enabled" {
-  description = "Enable CORS for the API Gateway"
-  type        = bool
-  default     = true
-}
-
-variable "lambda_function_arns" {
-  description = "List of Lambda function ARNs to integrate with the API Gateway"
-  type        = list(string)
+  default     = "tech-challenge-api"
 }

@@ -1,5 +1,21 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+
+  backend "s3" {
+    bucket         = "tech-challenge-tfstate-533267363894-4"
+    key            = "gateway/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "tech-challenge-terraform-lock-533267363894-4"
+    encrypt        = true
+  }
+}
+
 provider "aws" {
   region = var.aws_region
-  access_key = var.aws_access_key
-  secret_key = var.aws_secret_key
+  # Credenciais via AWS CLI profile, variáveis de ambiente ou IAM role
 }
