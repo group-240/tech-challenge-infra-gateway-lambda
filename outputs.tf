@@ -41,8 +41,3 @@ output "nlb_dns_name" {
   description = "DNS name do NLB usado pelo API Gateway"
   value       = data.aws_lb.app_nlb.dns_name
 }
-
-output "cloudwatch_log_group_name" {
-  description = "Nome do CloudWatch Log Group"
-  value       = aws_cloudwatch_log_group.api_gateway.name
-}

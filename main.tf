@@ -168,23 +168,6 @@ resource "aws_api_gateway_stage" "dev" {
   rest_api_id   = aws_api_gateway_rest_api.tech_challenge_api.id
   stage_name    = "dev"
 
-  # CloudWatch Logs
-  access_log_settings {
-    destination_arn = aws_cloudwatch_log_group.api_gateway.arn
-    format = jsonencode({
-      requestId      = "$context.requestId"
-      ip             = "$context.identity.sourceIp"
-      caller         = "$context.identity.caller"
-      user           = "$context.identity.user"
-      requestTime    = "$context.requestTime"
-      httpMethod     = "$context.httpMethod"
-      resourcePath   = "$context.resourcePath"
-      status         = "$context.status"
-      protocol       = "$context.protocol"
-      responseLength = "$context.responseLength"
-    })
-  }
-
   tags = {
     Name        = "${var.project_name}-api-stage-dev"
     Environment = "dev"
@@ -195,7 +178,7 @@ resource "aws_api_gateway_stage" "dev" {
 # Removido: Account-level CloudWatch role (AWS Academy não permite criar IAM roles)
 # O API Gateway funcionará sem logs detalhados de conta
 
-# Method settings com throttling
+# Method settings com throttling (sem logging devido às limitações do AWS Academy)
 resource "aws_api_gateway_method_settings" "all" {
   rest_api_id = aws_api_gateway_rest_api.tech_challenge_api.id
   stage_name  = aws_api_gateway_stage.dev.stage_name
@@ -204,24 +187,10 @@ resource "aws_api_gateway_method_settings" "all" {
   settings {
     throttling_burst_limit = 100
     throttling_rate_limit  = 50
-    logging_level          = "INFO"
-    data_trace_enabled     = true
     metrics_enabled        = true
   }
 
   depends_on = [aws_api_gateway_stage.dev]
-}
-
-# CloudWatch Log Group para API Gateway (1 dia para custo mínimo)
-resource "aws_cloudwatch_log_group" "api_gateway" {
-  name              = "/aws/apigateway/${var.project_name}"
-  retention_in_days = 1
-
-  tags = {
-    Name        = "${var.project_name}-api-logs"
-    Environment = "dev"
-    ManagedBy   = "terraform"
-  }
 }
 
 # ------------------------------------------------------------------
