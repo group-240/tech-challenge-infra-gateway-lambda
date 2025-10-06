@@ -4,7 +4,7 @@
 data "terraform_remote_state" "core" {
   backend = "s3"
   config = {
-    bucket = "tech-challenge-tfstate-533267363894-4"
+    bucket = "tech-challenge-tfstate-533267363894-10"  # Padronizado com sufixo -10
     key    = "core/terraform.tfstate"
     region = "us-east-1"
   }
@@ -13,7 +13,7 @@ data "terraform_remote_state" "core" {
 data "terraform_remote_state" "application" {
   backend = "s3"
   config = {
-    bucket = "tech-challenge-tfstate-533267363894-4"
+    bucket = "tech-challenge-tfstate-533267363894-10"  # Padronizado com sufixo -10
     key    = "application/terraform.tfstate"
     region = "us-east-1"
   }

@@ -7,10 +7,10 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "tech-challenge-tfstate-533267363894-4"
+    bucket         = "tech-challenge-tfstate-533267363894-10"  # Padronizado com sufixo -10
     key            = "gateway/terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "tech-challenge-terraform-lock-533267363894"
+    dynamodb_table = "tech-challenge-terraform-lock-533267363894-10"  # Padronizado com sufixo -10
     encrypt        = true
   }
 }
