@@ -2,7 +2,6 @@
 
 This project sets up an AWS API Gateway using Terraform to manage various RESTful APIs. The APIs are defined in the `refs` directory, and the infrastructure is managed through Terraform modules.
 
-
 ## Project Structure
 
 - **modules/api_gateway/**: Contains the Terraform module for the API Gateway.
