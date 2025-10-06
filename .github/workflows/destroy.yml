@@ -1,0 +1,216 @@
+name: 🧹 Destroy Gateway & Lambda - DANGER ZONE
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: 'Type "DESTROY-GATEWAY" to confirm deletion'
+        required: true
+        type: string
+      force:
+        description: 'Force destroy even with errors'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  AWS_REGION: us-east-1
+  TF_VERSION: 1.5.0
+
+jobs:
+  validate-confirmation:
+    name: 🔐 Validate Destruction Request
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Confirmation
+        run: |
+          if [ "${{ inputs.confirmation }}" != "DESTROY-GATEWAY" ]; then
+            echo "❌ Confirmation failed! You must type exactly 'DESTROY-GATEWAY' to proceed."
+            exit 1
+          fi
+          echo "✅ Confirmation validated"
+          echo "⚠️ WARNING: This will DELETE API Gateway and Lambda functions!"
+
+  destroy-gateway:
+    name: 🗑️ Destroy Gateway & Lambda
+    runs-on: ubuntu-latest
+    needs: validate-confirmation
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: ⚙️ Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: 🔍 Terraform Init
+        run: terraform init
+        continue-on-error: ${{ inputs.force }}
+
+      - name: 📋 List Resources Before Destroy
+        run: |
+          echo "📊 Current Resources in State:"
+          terraform state list || echo "No state found"
+        continue-on-error: true
+
+      - name: 💥 Terraform Destroy
+        run: |
+          if [ "${{ inputs.force }}" == "true" ]; then
+            echo "⚠️ FORCE MODE: Will attempt to destroy with -auto-approve"
+            terraform destroy -auto-approve || echo "Some resources failed to destroy"
+          else
+            echo "🗑️ STANDARD MODE: Destroying with -auto-approve"
+            terraform destroy -auto-approve
+          fi
+        continue-on-error: ${{ inputs.force }}
+
+      - name: 🧹 Clean Up Lambda Functions
+        if: always()
+        run: |
+          echo "🔍 Cleaning up orphaned Lambda functions..."
+          
+          FUNCTIONS=$(aws lambda list-functions \
+            --query "Functions[?contains(FunctionName, 'tech-challenge')].FunctionName" \
+            --output text)
+          
+          for func in $FUNCTIONS; do
+            echo "Deleting Lambda function: $func"
+            aws lambda delete-function --function-name "$func" || echo "Failed to delete $func"
+          done
+          
+          echo "✅ Lambda cleanup completed"
+        continue-on-error: true
+
+      - name: 🧹 Clean Up API Gateways
+        if: always()
+        run: |
+          echo "🔍 Cleaning up API Gateways..."
+          
+          # REST APIs
+          REST_APIS=$(aws apigateway get-rest-apis \
+            --query "items[?contains(name, 'tech-challenge')].id" \
+            --output text)
+          
+          for api_id in $REST_APIS; do
+            echo "Deleting REST API: $api_id"
+            aws apigateway delete-rest-api --rest-api-id "$api_id" || echo "Failed to delete $api_id"
+          done
+          
+          # HTTP APIs (API Gateway v2)
+          HTTP_APIS=$(aws apigatewayv2 get-apis \
+            --query "Items[?contains(Name, 'tech-challenge')].ApiId" \
+            --output text)
+          
+          for api_id in $HTTP_APIS; do
+            echo "Deleting HTTP API: $api_id"
+            aws apigatewayv2 delete-api --api-id "$api_id" || echo "Failed to delete $api_id"
+          done
+          
+          echo "✅ API Gateway cleanup completed"
+        continue-on-error: true
+
+      - name: 🧹 Clean Up CloudWatch Log Groups
+        if: always()
+        run: |
+          echo "🔍 Cleaning up CloudWatch log groups..."
+          
+          LOG_GROUPS=$(aws logs describe-log-groups \
+            --query "logGroups[?contains(logGroupName, 'tech-challenge')].logGroupName" \
+            --output text)
+          
+          for log_group in $LOG_GROUPS; do
+            echo "Deleting log group: $log_group"
+            aws logs delete-log-group --log-group-name "$log_group" || echo "Failed to delete $log_group"
+          done
+          
+          echo "✅ CloudWatch log groups cleanup completed"
+        continue-on-error: true
+
+      - name: 🧹 Clean Up IAM Roles
+        if: inputs.force == true
+        run: |
+          echo "⚠️ FORCE MODE: Cleaning up IAM roles..."
+          
+          ROLES=$(aws iam list-roles \
+            --query "Roles[?contains(RoleName, 'tech-challenge-lambda')].RoleName" \
+            --output text)
+          
+          for role in $ROLES; do
+            echo "Processing role: $role"
+            
+            # Detach policies
+            POLICIES=$(aws iam list-attached-role-policies --role-name "$role" --query "AttachedPolicies[*].PolicyArn" --output text)
+            for policy in $POLICIES; do
+              echo "  Detaching policy: $policy"
+              aws iam detach-role-policy --role-name "$role" --policy-arn "$policy" || true
+            done
+            
+            # Delete inline policies
+            INLINE_POLICIES=$(aws iam list-role-policies --role-name "$role" --query "PolicyNames[*]" --output text)
+            for policy in $INLINE_POLICIES; do
+              echo "  Deleting inline policy: $policy"
+              aws iam delete-role-policy --role-name "$role" --policy-name "$policy" || true
+            done
+            
+            # Delete role
+            echo "  Deleting role: $role"
+            aws iam delete-role --role-name "$role" || echo "Failed to delete $role"
+          done
+          
+          echo "✅ IAM roles cleanup completed"
+        continue-on-error: true
+
+      - name: 📊 Verify Destruction
+        if: always()
+        run: |
+          echo "🔍 Checking remaining gateway/lambda resources..."
+          
+          echo ""
+          echo "Lambda Functions:"
+          aws lambda list-functions \
+            --query "Functions[?contains(FunctionName, 'tech-challenge')].FunctionName" || echo "✅ No functions found"
+          
+          echo ""
+          echo "REST APIs:"
+          aws apigateway get-rest-apis \
+            --query "items[?contains(name, 'tech-challenge')].[name,id]" --output table || echo "✅ No REST APIs found"
+          
+          echo ""
+          echo "HTTP APIs:"
+          aws apigatewayv2 get-apis \
+            --query "Items[?contains(Name, 'tech-challenge')].[Name,ApiId]" --output table || echo "✅ No HTTP APIs found"
+          
+          echo ""
+          echo "CloudWatch Log Groups:"
+          aws logs describe-log-groups \
+            --query "logGroups[?contains(logGroupName, 'tech-challenge')].logGroupName" || echo "✅ No log groups found"
+          
+          echo ""
+          echo "IAM Roles:"
+          aws iam list-roles \
+            --query "Roles[?contains(RoleName, 'tech-challenge')].RoleName" || echo "✅ No roles found"
+          
+          echo ""
+          echo "✅ Gateway/Lambda destruction verification complete"
+        continue-on-error: true
+
+      - name: 📝 Summary
+        if: always()
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🧹 GATEWAY & LAMBDA DESTRUCTION SUMMARY"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Repository: tech-challenge-infra-gateway-lambda"
+          echo "Timestamp: $(date)"
+          echo "Force Mode: ${{ inputs.force }}"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
