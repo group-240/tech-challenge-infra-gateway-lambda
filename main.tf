@@ -148,6 +148,16 @@ resource "aws_api_gateway_deployment" "tech_challenge_api_deployment" {
     ]))
   }
 
+  depends_on = [
+    aws_api_gateway_integration.health_get,
+    aws_api_gateway_integration.categories_get,
+    aws_api_gateway_integration.customers_get,
+    aws_api_gateway_integration.orders_get,
+    aws_api_gateway_integration.products_get,
+    aws_api_gateway_integration.payments_post,
+    aws_api_gateway_integration.webhooks_post
+  ]
+
   lifecycle {
     create_before_destroy = true
   }
@@ -182,36 +192,8 @@ resource "aws_api_gateway_stage" "dev" {
   }
 }
 
-# Account-level throttling para proteção de custos
-resource "aws_api_gateway_account" "main" {
-  cloudwatch_role_arn = aws_iam_role.api_gateway_cloudwatch.arn
-}
-
-resource "aws_iam_role" "api_gateway_cloudwatch" {
-  name = "${var.project_name}-api-gateway-cloudwatch"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
-      Principal = {
-        Service = "apigateway.amazonaws.com"
-      }
-    }]
-  })
-
-  tags = {
-    Name        = "${var.project_name}-api-gateway-role"
-    Environment = "dev"
-    ManagedBy   = "terraform"
-  }
-}
-
-resource "aws_iam_role_policy_attachment" "api_gateway_cloudwatch" {
-  role       = aws_iam_role.api_gateway_cloudwatch.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
-}
+# Removido: Account-level CloudWatch role (AWS Academy não permite criar IAM roles)
+# O API Gateway funcionará sem logs detalhados de conta
 
 # Method settings com throttling
 resource "aws_api_gateway_method_settings" "all" {
