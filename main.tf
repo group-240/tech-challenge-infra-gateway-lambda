@@ -1,10 +1,7 @@
-# ------------------------------------------------------------------
-# Remote State: Importar outputs do infra-core e application
-# ------------------------------------------------------------------
 data "terraform_remote_state" "core" {
   backend = "s3"
   config = {
-    bucket = "tech-challenge-tfstate-533267363894-10"  # Padronizado com sufixo -10
+    bucket = "tech-challenge-tfstate-533267363894-10"
     key    = "core/terraform.tfstate"
     region = "us-east-1"
   }
@@ -13,15 +10,12 @@ data "terraform_remote_state" "core" {
 data "terraform_remote_state" "application" {
   backend = "s3"
   config = {
-    bucket = "tech-challenge-tfstate-533267363894-10"  # Padronizado com sufixo -10
+    bucket = "tech-challenge-tfstate-533267363894-10"
     key    = "application/terraform.tfstate"
     region = "us-east-1"
   }
 }
 
-# ------------------------------------------------------------------
-# API Gateway REST API
-# ------------------------------------------------------------------
 resource "aws_api_gateway_rest_api" "tech_challenge_api" {
   name        = var.api_name
   description = "API for Tech Challenge - Ambiente DEV - Integração com EKS via VPC Link"
