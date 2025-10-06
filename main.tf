@@ -16,6 +16,10 @@ data "terraform_remote_state" "application" {
   }
 }
 
+data "aws_lb" "app_nlb" {
+  arn = data.terraform_remote_state.core.outputs.nlb_arn
+}
+
 resource "aws_api_gateway_rest_api" "tech_challenge_api" {
   name        = var.api_name
   description = "API for Tech Challenge - Ambiente DEV - Integração com EKS via VPC Link"
